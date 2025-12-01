@@ -1,8 +1,9 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import pyodbc
 from tkcalendar import DateEntry
 from datetime import date, datetime
+import pandas as pd
 
 # =========================================================================
 # PHẦN 1: CẤU HÌNH DATABASE
@@ -11,7 +12,7 @@ from datetime import date, datetime
 def connect_db():
     try:
         conn = pyodbc.connect(
-            'Driver={SQL Server};'
+            'Driver={ODBC Driver 17 for SQL Server};'
             'Server=LAPTOP-AI2HQFS7\SQLEXPRESS;'       
             'Database=QuanLyBaiHat;'
             'Trusted_Connection=yes;'
@@ -37,6 +38,60 @@ def get_map_data(table, id_col, name_col):
         conn.close()
     return data_map
 
+def create_menu_bar(window, user_id, role, root_menu):
+    menubar = tk.Menu(window)
+
+    
+    def to_baihat():
+        if window.title().startswith("Quản Lý Bài Hát"): return 
+        window.destroy()
+        open_frmBaiHat(user_id, role, root_menu)
+
+    def to_casi():
+        if window.title().startswith("Quản Lý Ca Sĩ"): return
+        window.destroy()
+        open_frmCaSi(user_id, role, root_menu)
+
+    def to_nhacsi():
+        if window.title().startswith("Quản Lý Nhạc Sĩ"): return
+        window.destroy()
+        open_frmNhacSi(user_id, role, root_menu)
+
+    def to_album():
+        if window.title().startswith("Quản Lý Album"): return
+        window.destroy()
+        open_frmAlbum(user_id, role, root_menu)
+
+    def to_yeuthich():
+        if window.title().startswith("Danh Sách Yêu Thích"): return
+        window.destroy()
+        open_frmYeuThich(user_id, role, root_menu)
+
+    def do_logout():
+        if messagebox.askyesno("Đăng xuất", "Bạn có muốn về màn hình đăng nhập?"):
+            window.destroy()
+            root_menu.deiconify() 
+    menu_quanly = tk.Menu(menubar, tearoff=0)
+    
+    # Thêm các mục con vào menu Quản Lý
+    menu_quanly.add_command(label="Quản Lý Bài Hát", command=to_baihat)
+    menu_quanly.add_command(label="Quản Lý Ca Sĩ", command=to_casi)
+    menu_quanly.add_command(label="Quản Lý Nhạc Sĩ", command=to_nhacsi)
+    menu_quanly.add_command(label="Quản Lý Album", command=to_album)
+    
+
+    menu_quanly.add_separator() 
+    menu_quanly.add_command(label="Danh Sách Yêu Thích", command=to_yeuthich)
+
+    menu_hethong = tk.Menu(menubar, tearoff=0)
+    menu_hethong.add_command(label="Về Menu Chính", command=lambda: [window.destroy(), root_menu.deiconify()])
+    menu_hethong.add_command(label="Thoát Chương Trình", command=window.quit)
+
+    menubar.add_cascade(label="DANH MỤC QUẢN LÝ", menu=menu_quanly)
+    menubar.add_cascade(label="HỆ THỐNG", menu=menu_hethong)
+
+    window.config(menu=menubar)
+
 # =========================================================================
 # PHẦN 2: FORM QUẢN LÝ CA SĨ 
 # =========================================================================
@@ -56,6 +111,7 @@ def open_frmCaSi(current_user_id, role, root_menu):
         root.destroy()
         root_menu.deiconify()
     root.protocol("WM_DELETE_WINDOW", on_close)
+    create_menu_bar(root, current_user_id, role, root_menu)
 
     # --- GIAO DIỆN ---
     tk.Label(root, text="QUẢN LÝ CA SĨ", font=("Times New Roman", 22, "bold"), fg="OrangeRed").pack(pady=15)
@@ -246,6 +302,7 @@ def open_frmNhacSi(current_user_id, role, root_menu):
         root.destroy()
         root_menu.deiconify()
     root.protocol("WM_DELETE_WINDOW", on_close)
+    create_menu_bar(root, current_user_id, role, root_menu)
 
     tk.Label(root, text="QUẢN LÝ NHẠC SĨ", font=("Times New Roman", 22, "bold"), fg="RoyalBlue").pack(pady=15)
     
@@ -428,6 +485,7 @@ def open_frmAlbum(current_user_id, role, root_menu):
         root.destroy()
         root_menu.deiconify()
     root.protocol("WM_DELETE_WINDOW", on_close)
+    create_menu_bar(root, current_user_id, role, root_menu)
 
     # --- LOAD DỮ LIỆU CA SĨ 
     try:
@@ -618,6 +676,7 @@ def open_frmBaiHat(current_user_id, role, root_menu):
         root.destroy()
         root_menu.deiconify()
     root.protocol("WM_DELETE_WINDOW", on_close)
+    create_menu_bar(root, current_user_id, role, root_menu)
 
     try:
         tl_map = get_map_data("TheLoai", "MaTheLoai", "TenTheLoai")
@@ -705,7 +764,10 @@ def open_frmBaiHat(current_user_id, role, root_menu):
             cur.execute(sql, params)
             for r in cur.fetchall():
                 ngay = str(r[6]) if r[6] else ""; gio = str(r[7]).split('.')[0] if r[7] else ""
-                tree.insert("", tk.END, values=(r[0], r[1], r[2], r[3], r[4], r[5], ngay, gio, r[8]))
+                val_luot_nghe = r[8] if r[8] else 0
+                temp_str = f"{val_luot_nghe:,}"
+                luot_nghe_fmt = temp_str.replace(",",".")
+                tree.insert("", tk.END, values=(r[0], r[1], r[2], r[3], r[4], r[5], ngay, gio, luot_nghe_fmt))
             conn.close()
         except Exception as e: messagebox.showerror("Lỗi Load", str(e))
 
@@ -830,6 +892,34 @@ def open_frmBaiHat(current_user_id, role, root_menu):
             if "PRIMARY KEY" in str(e) or "duplicate" in str(e): messagebox.showinfo("Thông báo", "Bạn đã thích bài này rồi!")
             else: messagebox.showerror("Lỗi", str(e))
 
+    def xuat_excel():
+        if len(tree.get_children()) < 1:
+            return messagebox.showwarning("Thông báo", "Không có dữ liệu để xuất!")
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+            title="Lưu file Excel"
+        )
+        if not file_path:
+            return
+
+        try:
+            all_data = []
+            for item in tree.get_children():
+                row_values = tree.item(item)['values']
+                all_data.append(row_values)
+            columns = ["Mã Bài Hát", "Tên Bài Hát", "Ca Sĩ", "Nhạc Sĩ", "Thể Loại", "Album", "Ngày PH", "Thời Lượng", "Lượt Nghe"]
+
+            # Tạo một DataFrame (Bảng dữ liệu ảo của Pandas)
+            df = pd.DataFrame(all_data, columns=columns)
+
+            #  Ghi ra file Excel
+            df.to_excel(file_path, index=False)
+            messagebox.showinfo("Thành công", f"Đã xuất file Excel tại:\n{file_path}")
+            
+        except Exception as e:
+            messagebox.showerror("Lỗi Xuất File", f"Có lỗi xảy ra:\n{e}")
+
     # BUTTONS
     f_btn = tk.Frame(root, pady=15); f_btn.pack(side="bottom", fill="x")
     btn_style = { "font": ("Times New Roman", 10, "bold"), "width": 14, "height": 2, "bd": 3, "relief": "raised" }
@@ -843,6 +933,7 @@ def open_frmBaiHat(current_user_id, role, root_menu):
     btn_thoat = tk.Button(center_frame, text="THOÁT", command=on_close, bg="DarkSlateGray", fg="white", **btn_style)
     btn_like = tk.Button(center_frame, text="YÊU THÍCH", width=14, height=2, bg="DeepPink", fg="white", font=("Times New Roman", 10, "bold"), relief="raised",
                          command=add_to_favorite)
+    btn_excel = tk.Button(center_frame, text="XUẤT EXCEL", command=xuat_excel, bg="SeaGreen", fg="white", **btn_style)
 
     if role == 1: # ADMIN
         btn_them.grid(row=0, column=0, padx=10)
@@ -851,10 +942,12 @@ def open_frmBaiHat(current_user_id, role, root_menu):
         btn_xoa.grid(row=0, column=3, padx=10)
         btn_huy.grid(row=0, column=4, padx=10)
         btn_thoat.grid(row=0, column=5, padx=10)
-        btn_like.grid(row=1, column=0, columnspan=6, pady=(10, 0))
+        btn_like.grid(row=1, column=2, padx=10, pady=5)
+        btn_excel.grid(row=1, column=3, padx=10, pady=5)
     else: # USER
         btn_like.grid(row=0, column=0, padx=20)
-        btn_thoat.grid(row=0, column=1, padx=20)
+        btn_excel.grid(row=0, column=1, padx=20)
+        btn_thoat.grid(row=0, column=2, padx=20)
         for child in frame_info.winfo_children():
             try: child.configure(state='disabled')
             except: pass
@@ -879,6 +972,7 @@ def open_frmYeuThich(current_user_id, role, root_menu):
         root.destroy()
         root_menu.deiconify()
     root.protocol("WM_DELETE_WINDOW", on_close)
+    create_menu_bar(root, current_user_id, role, root_menu)
 
     tk.Label(root, text="BÀI HÁT YÊU THÍCH", font=("Times New Roman", 22, "bold"), fg="DeepPink").pack(pady=20)
 
